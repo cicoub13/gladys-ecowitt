@@ -105,6 +105,24 @@ test('la découverte réseau déclare le port d’annonce des passerelles', () =
   assert.ok(udp.ports.includes(DISCOVERY_PORT));
 });
 
+test('l’image de couverture respecte les contraintes du store', async () => {
+  // Un cover invalide ne fait PAS rejeter l'intégration : l'indexeur lui
+  // substitue un placeholder et publie un avertissement. Sans ce test, une
+  // image aux mauvaises dimensions passerait donc totalement inaperçue.
+  const url = manifest.cover_image;
+  assert.match(url, /^https:\/\//, 'le cover doit être servi en HTTPS');
+
+  const fileName = url.split('/').pop();
+  const cover = await readFile(new URL(`../${fileName}`, import.meta.url));
+
+  // En-tête PNG : signature, puis IHDR dont la largeur et la hauteur sont deux
+  // entiers 32 bits gros-boutistes aux offsets 16 et 20.
+  assert.equal(cover.subarray(1, 4).toString('ascii'), 'PNG');
+  assert.equal(cover.readUInt32BE(16), 800, 'largeur attendue : 800 px');
+  assert.equal(cover.readUInt32BE(20), 534, 'hauteur attendue : 534 px');
+  assert.ok(cover.length <= 150 * 1024, `cover trop lourd : ${Math.ceil(cover.length / 1024)} Ko`);
+});
+
 test('déclarer des categories impose Gladys >= 4.86.0', () => {
   assert.ok(manifest.categories.length >= 1 && manifest.categories.length <= 3);
   const [, major, minor] = manifest.gladys_version.match(/>=\s*(\d+)\.(\d+)\.\d+/).map(Number);
