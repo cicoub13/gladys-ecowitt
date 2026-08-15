@@ -1,0 +1,138 @@
+{
+  "manifest_version": 1,
+  "type": "device",
+  "name": "Ecowitt",
+  "description": {
+    "en": "Bring your Ecowitt weather station sensors into Gladys, fully locally.",
+    "fr": "Intégrez les capteurs de votre station météo Ecowitt à Gladys, en local."
+  },
+  "version": "1.0.0",
+  "docker_image": "ghcr.io/cicoub13/gladys-ecowitt:1.0.0",
+  "gladys_version": ">=4.86.0",
+  "categories": ["environment"],
+  "transports": ["local"],
+  "network_discovery": [{ "type": "udp-broadcast", "ports": [46000] }],
+  "containers": [
+    {
+      "name": "receiver",
+      "docker_image": "ghcr.io/cicoub13/gladys-ecowitt:1.0.0",
+      "command": ["node", "index.js", "--receiver"],
+      "start": "auto",
+      "memory_mb": 64,
+      "cpu": 0.2,
+      "ports": [
+        {
+          "container_port": 8080,
+          "protocol": "tcp",
+          "name": "ecowitt",
+          "browsable": false,
+          "label": {
+            "en": "Ecowitt endpoint",
+            "fr": "Point d'entrée Ecowitt"
+          }
+        }
+      ]
+    }
+  ],
+  "config_schema": [
+    {
+      "key": "intro_push",
+      "type": "section",
+      "label": {
+        "en": "Send your station's data to Gladys",
+        "fr": "Envoyer les données de votre station vers Gladys"
+      },
+      "description": {
+        "en": "In the WS View Plus app, open your station then Customized: choose the Ecowitt protocol, set the server to {{gladys_host}}, the port to {{port:ecowitt}}, the path to /data/report/ and an interval of 60 seconds. Sensors appear in the Discover screen after the first reading, which can take a few minutes.",
+        "fr": "Dans l'application WS View Plus, ouvrez votre station puis Customized : choisissez le protocole Ecowitt, indiquez le serveur {{gladys_host}}, le port {{port:ecowitt}}, le chemin /data/report/ et un intervalle de 60 secondes. Les capteurs apparaissent dans l'écran Découverte après le premier relevé, ce qui peut prendre quelques minutes."
+      }
+    },
+    {
+      "key": "station_passkey",
+      "type": "string",
+      "label": {
+        "en": "Station PASSKEY (optional)",
+        "fr": "PASSKEY de la station (facultatif)"
+      },
+      "description": {
+        "en": "Only accept readings from this station. Leave empty to accept the first station that reports.",
+        "fr": "N'accepter que les relevés de cette station. Laissez vide pour accepter la première station qui se manifeste."
+      },
+      "required": false,
+      "default": ""
+    },
+    {
+      "key": "intro_local",
+      "type": "section",
+      "label": {
+        "en": "Or poll a recent gateway",
+        "fr": "Ou interroger une passerelle récente"
+      },
+      "description": {
+        "en": "GW1100, GW1200, GW2000, GW3000 and recent network consoles expose a local API: fill in their IP address and Gladys polls them directly, with no configuration on the station. Consoles such as the WS2910 or the GW1000 do not: leave this empty and use the push mode above.",
+        "fr": "Les GW1100, GW1200, GW2000, GW3000 et les consoles réseau récentes exposent une API locale : renseignez leur adresse IP et Gladys les interroge directement, sans rien configurer sur la station. Les consoles comme la WS2910 ou le GW1000 n'en disposent pas : laissez ce champ vide et utilisez la réception ci-dessus."
+      }
+    },
+    {
+      "key": "gateway_ip",
+      "type": "string",
+      "label": {
+        "en": "Gateway IP address",
+        "fr": "Adresse IP de la passerelle"
+      },
+      "placeholder": { "en": "192.168.1.50", "fr": "192.168.1.50" },
+      "required": false,
+      "default": ""
+    },
+    {
+      "key": "mode",
+      "type": "select",
+      "label": { "en": "Acquisition mode", "fr": "Mode d'acquisition" },
+      "description": {
+        "en": "The two sources do not produce the same identifiers, so they are never combined on one station.",
+        "fr": "Les deux sources ne produisent pas les mêmes identifiants : elles ne sont jamais combinées sur une même station."
+      },
+      "required": false,
+      "default": "auto",
+      "options": [
+        {
+          "value": "auto",
+          "label": {
+            "en": "Automatic (poll if an IP is set)",
+            "fr": "Automatique (polling si une IP est renseignée)"
+          }
+        },
+        { "value": "push", "label": { "en": "Push only", "fr": "Réception seule" } },
+        { "value": "local", "label": { "en": "Local polling only", "fr": "Polling local seul" } }
+      ]
+    },
+    {
+      "key": "poll_frequency",
+      "type": "number",
+      "label": {
+        "en": "Polling interval (s)",
+        "fr": "Intervalle d'interrogation (s)"
+      },
+      "description": {
+        "en": "Local polling mode only.",
+        "fr": "Mode polling local uniquement."
+      },
+      "required": false,
+      "default": 60,
+      "min": 30,
+      "max": 3600
+    }
+  ],
+  "actions": [
+    {
+      "key": "test_reception",
+      "label": { "en": "Test the connection", "fr": "Tester la réception" },
+      "timeout_seconds": 20
+    },
+    {
+      "key": "scan_gateways",
+      "label": { "en": "Search for gateways", "fr": "Rechercher les passerelles" },
+      "timeout_seconds": 30
+    }
+  ]
+}
