@@ -6,18 +6,33 @@
     "en": "Bring your Ecowitt weather station sensors into Gladys, fully locally.",
     "fr": "Intégrez les capteurs de votre station météo Ecowitt à Gladys, en local."
   },
-  "version": "1.0.0",
-  "docker_image": "ghcr.io/cicoub13/gladys-ecowitt:1.0.0",
+  "version": "1.0.1",
+  "docker_image": "ghcr.io/cicoub13/gladys-ecowitt:1.0.1",
   "gladys_version": ">=4.86.0",
   "cover_image": "https://raw.githubusercontent.com/cicoub13/gladys-ecowitt/main/cover.png",
-  "categories": ["environment"],
-  "transports": ["local"],
-  "network_discovery": [{ "type": "udp-broadcast", "ports": [46000] }],
+  "categories": [
+    "environment"
+  ],
+  "transports": [
+    "local"
+  ],
+  "network_discovery": [
+    {
+      "type": "udp-broadcast",
+      "ports": [
+        46000
+      ]
+    }
+  ],
   "containers": [
     {
       "name": "receiver",
-      "docker_image": "ghcr.io/cicoub13/gladys-ecowitt:1.0.0",
-      "command": ["node", "index.js", "--receiver"],
+      "docker_image": "ghcr.io/cicoub13/gladys-ecowitt:1.0.1",
+      "command": [
+        "node",
+        "index.js",
+        "--receiver"
+      ],
       "start": "auto",
       "memory_mb": 64,
       "cpu": 0.2,
@@ -93,14 +108,20 @@
         "en": "Gateway IP address",
         "fr": "Adresse IP de la passerelle"
       },
-      "placeholder": { "en": "192.168.1.50", "fr": "192.168.1.50" },
+      "placeholder": {
+        "en": "192.168.1.50",
+        "fr": "192.168.1.50"
+      },
       "required": false,
       "default": ""
     },
     {
       "key": "mode",
       "type": "select",
-      "label": { "en": "Acquisition mode", "fr": "Mode d'acquisition" },
+      "label": {
+        "en": "Acquisition mode",
+        "fr": "Mode d'acquisition"
+      },
       "description": {
         "en": "The two sources do not produce the same identifiers, so they are never combined on one station.",
         "fr": "Les deux sources ne produisent pas les mêmes identifiants : elles ne sont jamais combinées sur une même station."
@@ -115,8 +136,20 @@
             "fr": "Automatique (polling si une IP est renseignée)"
           }
         },
-        { "value": "push", "label": { "en": "Push only", "fr": "Réception seule" } },
-        { "value": "local", "label": { "en": "Local polling only", "fr": "Polling local seul" } }
+        {
+          "value": "push",
+          "label": {
+            "en": "Push only",
+            "fr": "Réception seule"
+          }
+        },
+        {
+          "value": "local",
+          "label": {
+            "en": "Local polling only",
+            "fr": "Polling local seul"
+          }
+        }
       ]
     },
     {
@@ -139,12 +172,18 @@
   "actions": [
     {
       "key": "test_reception",
-      "label": { "en": "Test the connection", "fr": "Tester la réception" },
+      "label": {
+        "en": "Test the connection",
+        "fr": "Tester la réception"
+      },
       "timeout_seconds": 20
     },
     {
       "key": "scan_gateways",
-      "label": { "en": "Search for gateways", "fr": "Rechercher les passerelles" },
+      "label": {
+        "en": "Search for gateways",
+        "fr": "Rechercher les passerelles"
+      },
       "timeout_seconds": 30
     }
   ]
