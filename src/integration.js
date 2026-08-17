@@ -113,8 +113,8 @@ export async function startIntegration() {
     const status = await receiver.status();
     if (!status.last) {
       return {
-        fr: "Aucun relevé reçu pour l'instant. Vérifiez l'adresse et le port saisis dans WS View Plus.",
-        en: 'No reading received yet. Check the address and port set in WS View Plus.',
+        fr: "Aucun relevé reçu pour l'instant. Vérifiez l'adresse, le port et le chemin saisis dans WS View Plus : l'adresse doit être l'IP locale de la machine qui héberge Gladys, jamais localhost.",
+        en: 'No reading received yet. Check the address, port and path set in WS View Plus: the address must be the local IP of the machine running Gladys, never localhost.',
       };
     }
     const sensorCount = Object.keys(store.state.sensors).length;

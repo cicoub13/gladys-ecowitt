@@ -17,10 +17,15 @@ the **WS2910, GW1000, WN1900, WN1910, WS2320, HP2550, HP3500** consoles and,
 more generally, with every model except the WS6006.
 
 1. Install the integration and wait for the receiver container to start.
-2. Open the configuration screen: the address and port to copy are shown there.
+2. Open the configuration screen: the full address to copy is shown there, as
+   `http://<address>:<port>/data/report/`. If it contains `localhost` or
+   `127.0.0.1` — which happens when you browse Gladys from the machine running
+   it — replace that part with the **local IP address of that machine**: your
+   station has to reach it over the network, and `localhost` means nothing to
+   it.
 3. In the **WS View Plus** app, select your station, then **Customized**:
    - _Protocol Type Same As_: **Ecowitt**
-   - _Server IP / Hostname_: the address shown in Gladys
+   - _Server IP / Hostname_: the local IP address of the machine running Gladys
    - _Path_: `/data/report/`
    - _Port_: the port shown in Gladys
    - _Upload Interval_: `60` seconds
@@ -71,10 +76,10 @@ on the first reading received.
 
 ## Troubleshooting
 
-| Symptom                             | What to check                                                                                                                                                               |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The Discover screen stays empty     | No reading received: check the address, port and path in WS View Plus, then click "Test the connection".                                                                    |
-| The displayed address looks wrong   | If you browse Gladys through Gladys Plus or a reverse proxy, the address shown is the tunnel's. Use the local address of Gladys: the station must reach it on your network. |
-| "Search for gateways" finds nothing | Expected on a WS2910 or a GW1000: those models have no local API. Use the push mode.                                                                                        |
-| A measurement is missing            | Not every sensor reports every measurement. Only the ones actually received become features.                                                                                |
-| No battery on a solar sensor        | Ecowitt reports a voltage but documents no threshold for the WS80, WS90, WH40 and WH85: rather than an invented state, nothing is shown.                                    |
+| Symptom                             | What to check                                                                                                                                                                                                                         |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The Discover screen stays empty     | No reading received: check the address, port and path in WS View Plus, then click "Test the connection".                                                                                                                              |
+| The displayed address looks wrong   | It mirrors the one your browser uses to reach Gladys: `localhost` when you are on the machine itself, the tunnel hostname through Gladys Plus or a reverse proxy. Replace it with the local IP address of the machine running Gladys. |
+| "Search for gateways" finds nothing | Expected on a WS2910 or a GW1000: those models have no local API. Use the push mode.                                                                                                                                                  |
+| A measurement is missing            | Not every sensor reports every measurement. Only the ones actually received become features.                                                                                                                                          |
+| No battery on a solar sensor        | Ecowitt reports a voltage but documents no threshold for the WS80, WS90, WH40 and WH85: rather than an invented state, nothing is shown.                                                                                              |

@@ -44,8 +44,20 @@
         "fr": "Envoyer les données de votre station vers Gladys"
       },
       "description": {
-        "en": "In the WS View Plus app, open your station then Customized: choose the Ecowitt protocol, set the server to {{gladys_host}}, the port to {{port:ecowitt}}, the path to /data/report/ and an interval of 60 seconds. Sensors appear in the Discover screen after the first reading, which can take a few minutes.",
-        "fr": "Dans l'application WS View Plus, ouvrez votre station puis Customized : choisissez le protocole Ecowitt, indiquez le serveur {{gladys_host}}, le port {{port:ecowitt}}, le chemin /data/report/ et un intervalle de 60 secondes. Les capteurs apparaissent dans l'écran Découverte après le premier relevé, ce qui peut prendre quelques minutes."
+        "en": "In the WS View Plus app, open your station then Customized: choose the Ecowitt protocol and a 60 second interval, then copy the address below. Sensors appear in the Discover screen after the first reading, which can take a few minutes.",
+        "fr": "Dans l'application WS View Plus, ouvrez votre station puis Customized : choisissez le protocole Ecowitt et un intervalle de 60 secondes, puis recopiez l'adresse ci-dessous. Les capteurs apparaissent dans l'écran Découverte après le premier relevé, ce qui peut prendre quelques minutes."
+      }
+    },
+    {
+      "key": "push_endpoint",
+      "type": "section",
+      "label": {
+        "en": "http://{{gladys_host}}:{{port:ecowitt}}/data/report/",
+        "fr": "http://{{gladys_host}}:{{port:ecowitt}}/data/report/"
+      },
+      "description": {
+        "en": "WS View Plus asks for the three fields separately: server {{gladys_host}}, port {{port:ecowitt}}, path /data/report/. If the address above contains localhost, 127.0.0.1 or a domain name (Gladys Plus, reverse proxy), replace it with the local IP address of the machine running Gladys: your station has to reach it over the local network, and localhost means nothing to it.",
+        "fr": "WS View Plus demande les trois champs séparément : serveur {{gladys_host}}, port {{port:ecowitt}}, chemin /data/report/. Si l'adresse ci-dessus contient localhost, 127.0.0.1 ou un nom de domaine (Gladys Plus, reverse proxy), remplacez-la par l'adresse IP locale de la machine qui héberge Gladys : c'est votre station, sur le réseau local, qui doit la joindre — localhost ne veut rien dire pour elle."
       }
     },
     {
