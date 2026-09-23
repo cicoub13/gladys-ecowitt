@@ -11,6 +11,9 @@
 // -----------------------------------------------------------------------------
 
 import { logger } from '@gladysassistant/integration-sdk';
+import { exitOnUnhandledRejection } from './src/safety.js';
+
+exitOnUnhandledRejection({ logger });
 
 const isReceiver = process.argv.includes('--receiver') || process.env.ECOWITT_ROLE === 'receiver';
 
