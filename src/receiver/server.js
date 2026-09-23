@@ -101,6 +101,9 @@ export async function startReceiver({ port = 8080, internalPort = 8081 } = {}) {
           'cache-control': 'no-cache',
           connection: 'keep-alive',
         });
+        // Envoyer les en-têtes tout de suite : sans relevé à rejouer, le client
+        // ne saurait sinon qu'il est connecté qu'au premier maintien (25 s).
+        res.flushHeaders();
         // Rejouer le dernier relevé : le conteneur principal qui se (re)connecte
         // n'a pas à attendre le prochain envoi de la station, qui peut être à
         // plusieurs minutes.

@@ -34,16 +34,26 @@ const STATUS_TIMEOUT_MS = 5_000;
  * @param {(reading: object) => Promise<void>|void} options.onReading appelé à chaque relevé
  * @param {number} [options.idleTimeoutMs] silence toléré sur le flux
  * @param {number} [options.statusTimeoutMs] délai de réponse de `status()`
+ * @param {(up: boolean, err?: Error) => Promise<void>|void} [options.onStreamStatus]
+ *   appelé quand le flux s'ouvre (`true`) ou tombe (`false`)
  */
 export function createReceiverClient({
   baseUrl,
   onReading,
   idleTimeoutMs = IDLE_TIMEOUT_MS,
   statusTimeoutMs = STATUS_TIMEOUT_MS,
+  onStreamStatus = () => {},
 }) {
   let stopped = false;
   let controller = null;
   let retryDelay = INITIAL_RETRY_MS;
+
+  /** La boucle n'est attendue par personne : une erreur ici ne doit pas fuir. */
+  function notifyStreamStatus(up, err) {
+    Promise.resolve()
+      .then(() => onStreamStatus(up, err))
+      .catch((notifyErr) => logger.warn(`État du flux non transmis (${notifyErr.message})`));
+  }
 
   async function connect() {
     const current = new AbortController();
@@ -70,6 +80,7 @@ export function createReceiverClient({
       }
       logger.info('Connecté au flux du receiver');
       retryDelay = INITIAL_RETRY_MS;
+      notifyStreamStatus(true);
 
       const decoder = new TextDecoder();
       let buffer = '';
@@ -117,6 +128,7 @@ export function createReceiverClient({
           return;
         }
         logger.warn(`Flux du receiver indisponible (${err.message}), nouvel essai`);
+        notifyStreamStatus(false, err);
       }
       if (stopped) {
         return;
