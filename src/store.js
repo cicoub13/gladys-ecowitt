@@ -17,7 +17,7 @@
 // `/data` est le seul emplacement inscriptible du conteneur.
 // -----------------------------------------------------------------------------
 
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, rename, rm } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { createLogger } from '@gladysassistant/integration-sdk';
 
@@ -32,6 +32,7 @@ export function createStore({ path = DEFAULT_PATH } = {}) {
   /** @type {{ stationId: string|null, sensors: Record<string, object> }} */
   let state = { stationId: null, sensors: {} };
   let writeScheduled = null;
+  let tmpCounter = 0;
 
   return {
     get state() {
@@ -40,8 +41,13 @@ export function createStore({ path = DEFAULT_PATH } = {}) {
 
     async load() {
       try {
-        state = JSON.parse(await readFile(path, 'utf8'));
-        state.sensors ??= {};
+        const parsed = JSON.parse(await readFile(path, 'utf8'));
+        // Un JSON valide n'est pas forcément un état : `null`, un tableau ou
+        // des capteurs qui ne sont pas un objet feraient échouer `merge`.
+        if (!isPlainObject(parsed) || !isPlainObject(parsed.sensors ?? {})) {
+          throw new Error('structure inattendue');
+        }
+        state = { stationId: null, ...parsed, sensors: parsed.sensors ?? {} };
         logger.info(`État rechargé : ${Object.keys(state.sensors).length} capteur(s) connu(s)`);
       } catch (err) {
         if (err.code !== 'ENOENT') {
@@ -114,11 +120,26 @@ export function createStore({ path = DEFAULT_PATH } = {}) {
 
     async save() {
       await mkdir(dirname(path), { recursive: true }).catch(() => {});
-      await writeFile(path, JSON.stringify(state, null, 2), 'utf8');
+      // Écriture atomique : un arrêt en pleine écriture laisse l'ancien
+      // fichier intact au lieu d'un JSON tronqué. Un nom temporaire par
+      // écriture, pour que deux sauvegardes simultanées ne se mélangent pas.
+      tmpCounter += 1;
+      const tmpPath = `${path}.${process.pid}.${tmpCounter}.tmp`;
+      try {
+        await writeFile(tmpPath, JSON.stringify(state, null, 2), { encoding: 'utf8', mode: 0o600 });
+        await rename(tmpPath, path);
+      } catch (err) {
+        await rm(tmpPath, { force: true }).catch(() => {});
+        throw err;
+      }
     },
 
     reset() {
       state = { stationId: null, sensors: {} };
     },
   };
+}
+
+function isPlainObject(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
