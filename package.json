@@ -1,6 +1,6 @@
 {
   "name": "gladys-ecowitt",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "private": true,
   "description": "Intégration externe Gladys Assistant pour les stations météo Ecowitt",
   "type": "module",
