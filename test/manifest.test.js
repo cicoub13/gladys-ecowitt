@@ -41,6 +41,15 @@ test('les valeurs par défaut restent alignées sur DEFAULT_CONFIG', () => {
   }
 });
 
+test('le champ poll_frequency ne propose que des intervalles acceptés par Gladys', () => {
+  // Le cœur n'accepte que 1, 2, 10, 15, 30 ou 60 s ; en deçà de 30 s, la
+  // passerelle serait interrogée plus souvent qu'elle ne rafraîchit ses mesures.
+  const field = manifest.config_schema.find((f) => f.key === 'poll_frequency');
+  assert.equal(field.type, 'number');
+  assert.equal(field.min, 30);
+  assert.equal(field.max, 60);
+});
+
 test('les sections ne stockent aucune valeur', () => {
   for (const section of manifest.config_schema.filter((f) => f.type === 'section')) {
     assert.equal(section.required, undefined);

@@ -53,7 +53,7 @@ configuration sur la station.
 
 1. Renseignez l'**adresse IP de la passerelle** dans la configuration. Le bouton
    **Rechercher les passerelles** peut la trouver pour vous.
-2. Ajustez l'intervalle d'interrogation si besoin (60 secondes par défaut).
+2. Ajustez l'intervalle d'interrogation si besoin : 30 ou 60 secondes (60 par défaut).
 3. Lancez une découverte.
 
 Ce mode a un avantage : il récupère l'identifiant matériel de chaque capteur, si
