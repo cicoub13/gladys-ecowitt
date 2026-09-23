@@ -36,7 +36,10 @@ if (isReceiver) {
   try {
     await startIntegration();
   } catch (err) {
-    logger.error('Connexion initiale impossible', err);
-    process.exit(1);
+    // Le SDK ne rejette que sur un jeton refusé à la première connexion, et
+    // garde sa boucle de reconnexion armée : ce refus peut être passager
+    // (Gladys qui démarre). Quitter ici transformerait ce délai en redémarrage
+    // du conteneur ; on reste en vie et le SDK retente.
+    logger.error(`Connexion initiale refusée (${err.message}), nouvel essai automatique`, err);
   }
 }
