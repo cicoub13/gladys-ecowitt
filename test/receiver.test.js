@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import net from 'node:net';
 import { startReceiver } from '../src/receiver/server.js';
 import { createReceiverClient } from '../src/receiver/client.js';
 import { toEcowittPayload } from '../src/sources/wunderground.js';
@@ -125,4 +126,28 @@ test('un corps surdimensionné est rejeté', async (t) => {
   // erreur réseau : les deux valent refus.
   const status = response instanceof Error ? 413 : response.status;
   assert.equal(status, 413);
+});
+
+test('un chemin illisible est refusé sans faire tomber le receiver', async (t) => {
+  const port = PORT + 4;
+  const receiver = await startReceiver({ port });
+  t.after(() => receiver.close());
+
+  // `fetch` normalise le chemin : il faut une requête brute pour envoyer
+  // « // », que `new URL` refuse — ce que fait n'importe quel scanner du LAN.
+  const statusLine = await new Promise((resolve, reject) => {
+    const socket = net.connect(port, '127.0.0.1', () => {
+      socket.write('GET // HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n');
+    });
+    socket.setTimeout(1_000, () => socket.destroy(new Error('aucune réponse')));
+    socket.once('data', (data) => resolve(data.toString().split('\r\n')[0]));
+    socket.once('error', reject);
+  });
+  assert.equal(statusLine, 'HTTP/1.1 400 Bad Request');
+
+  const response = await fetch(`http://127.0.0.1:${port}/data/report`, {
+    method: 'POST',
+    body: new URLSearchParams({ PASSKEY: 'ABC', tempf: '50.0' }).toString(),
+  });
+  assert.equal(response.status, 200, 'le receiver doit toujours répondre');
 });

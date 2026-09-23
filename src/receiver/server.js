@@ -43,8 +43,26 @@ export async function startReceiver({ port = 8080 } = {}) {
     }
   };
 
-  const server = http.createServer(async (req, res) => {
-    const url = new URL(req.url, 'http://receiver');
+  // Le port est ouvert sur le LAN : une requête inattendue ne doit jamais
+  // devenir une promesse rejetée non gérée, qui arrêterait le processus.
+  const server = http.createServer((req, res) => {
+    handle(req, res).catch((err) => {
+      logger.warn(`Requête ${req.method} ${req.url} en échec (${err.message})`);
+      if (!res.headersSent) {
+        res.writeHead(500);
+      }
+      res.end();
+    });
+  });
+
+  async function handle(req, res) {
+    let url;
+    try {
+      url = new URL(req.url, 'http://receiver');
+    } catch {
+      res.writeHead(400).end(); // chemin illisible, par exemple « // »
+      return;
+    }
 
     // --- Flux temps réel consommé par le conteneur principal ---------------
     if (req.method === 'GET' && url.pathname === '/events') {
@@ -105,7 +123,7 @@ export async function startReceiver({ port = 8080 } = {}) {
     }
 
     res.writeHead(404).end();
-  });
+  }
 
   function record(protocol, payload) {
     receivedCount += 1;
