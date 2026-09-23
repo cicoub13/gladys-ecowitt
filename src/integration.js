@@ -18,8 +18,11 @@ import { toObservation } from './sources/pushAdapter.js';
 import { toEcowittPayload } from './sources/wunderground.js';
 import { scanGateways } from './discovery.js';
 
-/** Adresse du sous-conteneur sur le réseau privé : son alias DNS est son nom. */
-const RECEIVER_URL = process.env.ECOWITT_RECEIVER_URL ?? 'http://receiver:8080';
+/**
+ * Adresse du sous-conteneur sur le réseau privé : son alias DNS est son nom.
+ * Port INTERNE, jamais publié sur le LAN (voir src/receiver/server.js).
+ */
+const RECEIVER_URL = process.env.ECOWITT_RECEIVER_URL ?? 'http://receiver:8081';
 
 export async function startIntegration() {
   const gladys = new GladysIntegration();

@@ -3,8 +3,8 @@
 //
 // Les deux conteneurs partagent le réseau bridge privé de l'intégration, sur
 // lequel Gladys donne au sous-conteneur un alias DNS égal à son nom déclaré au
-// manifeste : `http://receiver:8080` suffit, sans avoir à connaître le port
-// alloué sur l'hôte.
+// manifeste : `http://receiver:8081` (le port interne, jamais publié) suffit,
+// sans avoir à connaître le port alloué sur l'hôte.
 //
 // Le flux SSE est rejoué à la connexion (le receiver conserve le dernier
 // relevé), donc une coupure ne fait pas attendre le prochain envoi de la

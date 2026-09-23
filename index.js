@@ -17,7 +17,8 @@ const isReceiver = process.argv.includes('--receiver') || process.env.ECOWITT_RO
 if (isReceiver) {
   const { startReceiver } = await import('./src/receiver/server.js');
   const port = Number(process.env.ECOWITT_RECEIVER_PORT ?? 8080);
-  const receiver = await startReceiver({ port });
+  const internalPort = Number(process.env.ECOWITT_RECEIVER_INTERNAL_PORT ?? 8081);
+  const receiver = await startReceiver({ port, internalPort });
 
   const shutdown = async (signal) => {
     logger.info(`Signal ${signal} reçu, arrêt du receiver`);
