@@ -18,23 +18,105 @@ import { toObservation } from './sources/pushAdapter.js';
 import { toEcowittPayload } from './sources/wunderground.js';
 import { scanGateways } from './discovery.js';
 
-/** Adresse du sous-conteneur sur le réseau privé : son alias DNS est son nom. */
-const RECEIVER_URL = process.env.ECOWITT_RECEIVER_URL ?? 'http://receiver:8080';
+/**
+ * Adresse du sous-conteneur sur le réseau privé : son alias DNS est son nom.
+ * Port INTERNE, jamais publié sur le LAN (voir src/receiver/server.js).
+ */
+const RECEIVER_URL = process.env.ECOWITT_RECEIVER_URL ?? 'http://receiver:8081';
 
-export async function startIntegration() {
-  const gladys = new GladysIntegration();
-  const store = createStore();
+/** Statut affiché quand la passerelle interrogée ne répond pas. */
+const gatewayUnreachable = (ip) => ({
+  fr: `Passerelle injoignable à ${ip} : vérifiez qu'elle est allumée et que son adresse n'a pas changé.`,
+  en: `Gateway unreachable at ${ip}: check it is powered on and its address has not changed.`,
+});
+
+/** Statut affiché quand le flux du sous-conteneur receiver est coupé. */
+const RECEIVER_UNREACHABLE = {
+  fr: 'Le récepteur des relevés est injoignable (il redémarre peut-être) : nouvel essai automatique.',
+  en: 'The reading receiver is unreachable (it may be restarting): retrying automatically.',
+};
+
+/**
+ * @param {object} [options] injections pour les tests
+ * @param {object} [options.gladys] instance du SDK
+ * @param {object} [options.store] état persistant
+ * @param {string} [options.receiverUrl] adresse du port interne du receiver
+ */
+export async function startIntegration({
+  gladys = new GladysIntegration(),
+  store = createStore(),
+  receiverUrl = RECEIVER_URL,
+} = {}) {
   const publisher = createPublisher(gladys);
 
   let config = normalizeConfig();
   let localClient = null;
 
+  // Problème en cours sur la source des relevés, ou null si tout va bien.
+  // `setConnectionStatus` n'est rappelé qu'aux changements.
+  let sourceProblem = null;
+  // État du flux du receiver : inconnu tant qu'il n'a ni réussi ni échoué.
+  let receiverUp = null;
+
   await store.load();
 
   const receiver = createReceiverClient({
-    baseUrl: RECEIVER_URL,
+    baseUrl: receiverUrl,
     onReading: (reading) => handleReading(reading),
+    onStreamStatus: async (up) => {
+      receiverUp = up;
+      if (resolveMode(config) === MODES.PUSH) {
+        await reportSource(up ? null : RECEIVER_UNREACHABLE);
+      }
+    },
   });
+
+  // --- Statut de connexion ----------------------------------------------------
+
+  /**
+   * Reflète l'état de la source dans l'écran de configuration.
+   * @param {object|null} problem message multilingue, ou null si tout va bien
+   * @param {object} [options]
+   * @param {boolean} [options.force] renvoyer même sans changement (reconnexion)
+   */
+  async function reportSource(problem, { force = false } = {}) {
+    const changed = (problem?.en ?? null) !== (sourceProblem?.en ?? null);
+    sourceProblem = problem;
+    if (!changed && !force) {
+      return;
+    }
+    if (changed) {
+      if (problem) {
+        logger.warn(problem.fr);
+      } else {
+        logger.info('Source des relevés de nouveau joignable');
+      }
+    }
+    await gladys
+      .setConnectionStatus(!problem, problem ?? undefined)
+      .catch((err) => logger.warn(`Statut de connexion non transmis (${err.message})`));
+  }
+
+  /** Statut attendu pour le mode courant, après un changement de configuration. */
+  function currentSourceProblem() {
+    if (resolveMode(config) === MODES.PUSH) {
+      return receiverUp === false ? RECEIVER_UNREACHABLE : null;
+    }
+    // Mode local : le prochain appel à la passerelle tranchera.
+    return null;
+  }
+
+  /** Interroge la passerelle en tenant le statut de connexion à jour. */
+  async function pollGateway() {
+    try {
+      const observation = await localClient.getObservation();
+      await reportSource(null);
+      return observation;
+    } catch (err) {
+      await reportSource(gatewayUnreachable(config.gateway_ip));
+      throw err;
+    }
+  }
 
   // --- Traitement d'un relevé reçu en push ---------------------------------
   async function handleReading(reading) {
@@ -83,7 +165,7 @@ export async function startIntegration() {
 
   gladys.onScanRequest(async () => {
     if (resolveMode(config) === MODES.LOCAL && localClient) {
-      await ingest(await localClient.getObservation());
+      await ingest(await pollGateway());
     }
     await publishDevices();
   });
@@ -92,19 +174,20 @@ export async function startIntegration() {
     if (!localClient) {
       return; // en mode push, c'est la station qui donne le rythme
     }
-    await ingest(await localClient.getObservation());
+    await ingest(await pollGateway());
   });
 
   gladys.onConfigUpdated(async (raw) => {
     config = normalizeConfig(raw);
     refreshLocalClient();
+    await reportSource(currentSourceProblem());
     await publishDevices();
   });
 
   gladys.onAction('test_reception', async () => {
     const mode = resolveMode(config);
     if (mode === MODES.LOCAL) {
-      const observation = await localClient.getObservation();
+      const observation = await pollGateway();
       return {
         fr: `Passerelle ${config.gateway_ip} joignable : ${observation.sensors.length} capteur(s) détecté(s).`,
         en: `Gateway ${config.gateway_ip} reachable: ${observation.sensors.length} sensor(s) detected.`,
@@ -146,7 +229,11 @@ export async function startIntegration() {
       // mémorisées ne sont plus un reflet fiable de ce qu'il connaît.
       publisher.reset();
       await publishDevices();
-      await gladys.setConnectionStatus(true);
+      // Pas de `true` d'office : Gladys revient, mais la source peut être
+      // toujours coupée. En mode local, le dernier résultat connu fait foi
+      // jusqu'au prochain appel à la passerelle.
+      const problem = resolveMode(config) === MODES.PUSH ? currentSourceProblem() : sourceProblem;
+      await reportSource(problem, { force: true });
     } catch (err) {
       logger.error('Initialisation impossible après connexion', err);
       await gladys

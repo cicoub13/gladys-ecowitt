@@ -27,6 +27,31 @@ export const DEFAULT_CONFIG = {
   station_passkey: '',
 };
 
+// Intervalles (en secondes) que le cœur de Gladys accepte sur un device
+// publié : il valide `poll_frequency` EN MILLISECONDES contre l'ensemble fermé
+// [1000, 2000, 10000, 15000, 30000, 60000], et rejette toute la publication
+// sinon. En deçà de 30 s, on interrogerait la passerelle plus souvent qu'elle
+// ne rafraîchit ses mesures : seules 30 et 60 s sont retenues. Même correctif
+// que gladys-tp-link (src/config.js).
+const POLL_FREQUENCIES_SECONDS = [30, 60];
+
+/**
+ * Ramène un intervalle à la valeur acceptée la plus proche. Une valeur saisie
+ * avant la correction (le champ allait jusqu'à 3600 s) reste ainsi valable.
+ */
+function nearestPollFrequency(raw) {
+  // Seuls un nombre ou une chaîne numérique ont un sens : `Number(true)` vaut 1
+  // et `Number('')` vaut 0, deux valeurs à ne pas confondre avec un choix.
+  const seconds = typeof raw === 'number' || typeof raw === 'string' ? Number(raw) : NaN;
+  if (raw === '' || !Number.isFinite(seconds) || seconds <= 0) {
+    return DEFAULT_CONFIG.poll_frequency;
+  }
+  // `<=` : à égale distance (45 s), le plus lent l'emporte.
+  return POLL_FREQUENCIES_SECONDS.reduce((closest, candidate) =>
+    Math.abs(candidate - seconds) <= Math.abs(closest - seconds) ? candidate : closest,
+  );
+}
+
 export function normalizeConfig(raw = {}) {
   const mode = Object.values(MODES).includes(raw.mode) ? raw.mode : DEFAULT_CONFIG.mode;
   return {
@@ -35,7 +60,7 @@ export function normalizeConfig(raw = {}) {
     mode,
     gateway_ip: String(raw.gateway_ip ?? '').trim(),
     station_passkey: String(raw.station_passkey ?? '').trim(),
-    poll_frequency: Number(raw.poll_frequency ?? DEFAULT_CONFIG.poll_frequency),
+    poll_frequency: nearestPollFrequency(raw.poll_frequency ?? DEFAULT_CONFIG.poll_frequency),
   };
 }
 

@@ -78,7 +78,8 @@ function buildDevice(gladys, stationId, sensor, pollFrequency) {
   return {
     name: buildDeviceName(sensor.type, sensor.channel),
     external_id: ids.device,
-    ...(pollFrequency ? { poll_frequency: pollFrequency } : {}),
+    // Gladys attend des millisecondes (voir POLL_FREQUENCIES_SECONDS).
+    ...(pollFrequency ? { poll_frequency: pollFrequency * 1000 } : {}),
     features,
   };
 }

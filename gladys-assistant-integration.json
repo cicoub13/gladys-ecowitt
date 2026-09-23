@@ -150,13 +150,13 @@
         "fr": "Intervalle d'interrogation (s)"
       },
       "description": {
-        "en": "Local polling mode only.",
-        "fr": "Mode polling local uniquement."
+        "en": "Local polling mode only. 30 or 60 seconds: the only intervals Gladys accepts.",
+        "fr": "Mode polling local uniquement. 30 ou 60 secondes : les seuls intervalles acceptés par Gladys."
       },
       "required": false,
       "default": 60,
       "min": 30,
-      "max": 3600
+      "max": 60
     }
   ],
   "actions": [
