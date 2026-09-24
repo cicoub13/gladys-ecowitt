@@ -9,6 +9,14 @@ son signal et son historique. Tout est local, sans passer par le cloud Ecowitt.
 
 📖 [Documentation utilisateur](docs/fr.md) · [User documentation](docs/en.md)
 
+## Aperçu
+
+Une station Ecowitt sur un tableau de bord : historique de la température et de l'humidité sur 24 h, mesures de la station extérieure et des capteurs additionnels :
+
+![Station Ecowitt sur un tableau de bord Gladys](docs/images/dashboard.png)
+
+_Captures réalisées sur un tableau de bord Gladys 5.1 avec des appareils et des états simulés : les valeurs sont indicatives._
+
 ## Architecture
 
 Gladys n'autorise la publication d'un port sur le réseau local que pour un
