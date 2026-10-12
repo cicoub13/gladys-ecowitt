@@ -56,6 +56,7 @@ sources/localAdapter ─┘
 | `src/integration.js`     | Câblage du SDK : handlers, cycle de vie               |
 | `src/receiver/`          | Serveur HTTP entrant et son client SSE                |
 | `src/sources/`           | Adaptateurs push, Wunderground et API locale          |
+| `src/poller.js`          | Lecture périodique de la passerelle (mode local)      |
 | `src/ecowitt/units.js`   | Conversions d'unités                                  |
 | `src/ecowitt/battery.js` | Encodage des batteries (deux conventions)             |
 | `src/ecowitt/catalog.js` | Capteurs → catégories et unités Gladys                |

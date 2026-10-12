@@ -40,17 +40,17 @@ export function idsFor(gladys, stationId, sensor) {
  * Payload de `publishDiscoveredDevices`, dérivé de l'état accumulé.
  * @param {object} gladys instance du SDK
  * @param {object} state état du store
- * @param {object} [options]
- * @param {number} [options.pollFrequency] intervalle d'appel de `onPoll`, en
- *   secondes ; omis en mode push, où c'est la station qui décide du rythme
+ *
+ * Ni `should_poll` ni `poll_frequency` : en mode local, l'intégration lit la
+ * passerelle sur sa propre boucle (src/poller.js), Gladys n'appelle pas `onPoll`.
  */
-export function buildDiscoveredDevices(gladys, state, { pollFrequency } = {}) {
+export function buildDiscoveredDevices(gladys, state) {
   return Object.values(state.sensors)
-    .map((sensor) => buildDevice(gladys, state.stationId, sensor, pollFrequency))
+    .map((sensor) => buildDevice(gladys, state.stationId, sensor))
     .filter(Boolean);
 }
 
-function buildDevice(gladys, stationId, sensor, pollFrequency) {
+function buildDevice(gladys, stationId, sensor) {
   const description = describeSensor(sensor.type);
   if (!description) {
     return null; // type inconnu du catalogue : on ne devine pas
@@ -78,8 +78,6 @@ function buildDevice(gladys, stationId, sensor, pollFrequency) {
   return {
     name: buildDeviceName(sensor.type, sensor.channel),
     external_id: ids.device,
-    // Gladys attend des millisecondes (voir POLL_FREQUENCIES_SECONDS).
-    ...(pollFrequency ? { poll_frequency: pollFrequency * 1000 } : {}),
     features,
   };
 }

@@ -25,9 +25,14 @@ names are in French.
 
 - Push: receiver SSE → `integration.handleReading` → (`sources/wunderground.toEcowittPayload` if
   `protocol === 'wunderground'`) → `station_passkey` filter → `sources/pushAdapter.toObservation`.
-- Local polling: `onPoll`/`onScanRequest` → `sources/localAdapter.createLocalClient().getObservation()`
-  (`/get_livedata_info` + `/get_sensors_info`, no auth, 8 s timeout, 10 s cache + in-flight dedup
-  because Gladys fires `onPoll` **per device**). A failing `get_sensors_info` is tolerated (missing on some firmwares).
+- Local polling: the integration's own loop (`src/poller.js`, one gateway read every `poll_frequency`
+  seconds, whatever the number of devices) plus `onScanRequest` and `test_reception` →
+  `sources/localAdapter.createLocalClient().getObservation()` (`/get_livedata_info` + `/get_sensors_info`,
+  no auth, 8 s timeout, 10 s cache + in-flight dedup when those overlap). A failing `get_sensors_info` is
+  tolerated (missing on some firmwares). The loop starts on `connected`, is re-armed by `onConfigUpdated`
+  (stopped in push mode), stops on `disconnected` and shutdown, skips a tick while a read is in flight,
+  and a failed read only logs and updates the connection status. There is no `onPoll`: Gladys core only
+  schedules it for devices published with `should_poll: true`, which never reaches already created devices.
 - Both produce the pivot **Observation** `{stationId, model, receivedAt, sensors:[{type, channel,
 hardwareId, values, battery, signal}]}` → `ingest()`: `store.merge` → republish discovered devices if
   the profile changed → `gladys/publisher.publish(buildStates(...))`.
@@ -64,9 +69,9 @@ hardwareId, values, battery, signal}]}` → `ingest()`: `store.merge` → republ
 - Local: unpaired sensors have id `FFFFFFFF`/`FFFFFFFE`. Channel ↔ inventory link is only the `CH<n>`
   suffix of `name`. Piezo rain (`piezoRain`, `*_piezo` push keys) wins over the tipping bucket.
 - Wunderground `rainin` = hourly rain (mapped to `hourlyrainin`); no multi-channel, PM, CO2 or lightning.
-- `poll_frequency`: Gladys validates it **in ms** against `[1000,2000,10000,15000,30000,60000]` and rejects
-  the whole publish otherwise. Config snaps to 30 or 60 s (`nearestPollFrequency`, legacy values up to 3600
-  map to 60); it is sent ×1000 and only in local mode. Same fix as gladys-tp-link.
+- `poll_frequency` (config, seconds): config snaps to 30 or 60 s (`nearestPollFrequency`, legacy values up
+  to 3600 map to 60), the values Gladys used to accept on a device. It now only drives `src/poller.js` and
+  is no longer sent on discovered devices (neither is `should_poll`). Same fix as gladys-tp-link.
 - Gateway discovery (`src/discovery.js`): the UDP broadcast on port 46000 is captured by Gladys core via
   `scanNetwork('udp-broadcast')` and decoded here (`0xFF 0xFF 0x12` frame). Prefer `source_ip` over the announced IP.
   WS2910/GW1000 have no local API and do not announce.
