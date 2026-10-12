@@ -17,6 +17,7 @@ import { createLocalClient } from './sources/localAdapter.js';
 import { toObservation } from './sources/pushAdapter.js';
 import { toEcowittPayload } from './sources/wunderground.js';
 import { scanGateways } from './discovery.js';
+import { createPoller } from './poller.js';
 
 /**
  * Adresse du sous-conteneur sur le réseau privé : son alias DNS est son nom.
@@ -148,16 +149,33 @@ export async function startIntegration({
   }
 
   async function publishDevices() {
-    const pollFrequency = resolveMode(config) === MODES.LOCAL ? config.poll_frequency : undefined;
-    await gladys.publishDiscoveredDevices(
-      buildDiscoveredDevices(gladys, store.state, { pollFrequency }),
-    );
+    await gladys.publishDiscoveredDevices(buildDiscoveredDevices(gladys, store.state));
   }
 
   function refreshLocalClient() {
     localClient = null;
     if (resolveMode(config) === MODES.LOCAL && config.gateway_ip) {
       localClient = createLocalClient({ ip: config.gateway_ip });
+    }
+  }
+
+  // --- Lecture périodique de la passerelle (mode local) ---------------------
+  // Gladys n'appelle jamais `onPoll` sur nos devices (voir src/poller.js) :
+  // l'intégration lit la passerelle elle-même, une fois par intervalle.
+  const poller = createPoller({
+    run: async () => {
+      if (localClient) {
+        await ingest(await pollGateway());
+      }
+    },
+  });
+
+  /** Arme la boucle en mode local, l'arrête sinon. N'attend pas la lecture. */
+  function syncPoller() {
+    if (resolveMode(config) === MODES.LOCAL && localClient) {
+      poller.start(config.poll_frequency);
+    } else {
+      poller.stop(); // en mode push, c'est la station qui donne le rythme
     }
   }
 
@@ -170,17 +188,11 @@ export async function startIntegration({
     await publishDevices();
   });
 
-  gladys.onPoll(async () => {
-    if (!localClient) {
-      return; // en mode push, c'est la station qui donne le rythme
-    }
-    await ingest(await pollGateway());
-  });
-
   gladys.onConfigUpdated(async (raw) => {
     config = normalizeConfig(raw);
     refreshLocalClient();
     await reportSource(currentSourceProblem());
+    syncPoller();
     await publishDevices();
   });
 
@@ -234,6 +246,7 @@ export async function startIntegration({
       // jusqu'au prochain appel à la passerelle.
       const problem = resolveMode(config) === MODES.PUSH ? currentSourceProblem() : sourceProblem;
       await reportSource(problem, { force: true });
+      syncPoller();
     } catch (err) {
       logger.error('Initialisation impossible après connexion', err);
       await gladys
@@ -245,7 +258,12 @@ export async function startIntegration({
     }
   });
 
+  // Hors connexion, les états ne pourraient pas être publiés : la boucle
+  // reprend à la reconnexion (`connected`).
+  gladys.on('disconnected', () => poller.stop());
+
   gladys.handleShutdown(async () => {
+    poller.stop();
     receiver.stop();
     await store.save().catch(() => {});
   });

@@ -31,6 +31,21 @@ test('un device par capteur physique, nommé par canal', () => {
   assert.ok(names.includes('Détecteur de foudre'));
 });
 
+test('les devices ne demandent pas à Gladys de les interroger', () => {
+  // La passerelle est lue par la boucle de l'intégration (src/poller.js) : ni
+  // `should_poll` ni `poll_frequency`, dans aucun mode.
+  const gladys = createFakeGladys();
+  const store = newStore();
+  store.merge(buildObservation(LIVEDATA_IMPERIAL, SENSORS_INFO));
+  store.merge(toObservation(WS2910_PAYLOAD));
+
+  const devices = buildDiscoveredDevices(gladys, store.state);
+  assert.ok(devices.length > 0);
+  for (const device of devices) {
+    assert.deepEqual(Object.keys(device).sort(), ['external_id', 'features', 'name']);
+  }
+});
+
 test('seules les mesures réellement observées deviennent des fonctionnalités', () => {
   const gladys = createFakeGladys();
   const store = newStore();

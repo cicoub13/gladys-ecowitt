@@ -27,12 +27,13 @@ export const DEFAULT_CONFIG = {
   station_passkey: '',
 };
 
-// Intervalles (en secondes) que le cœur de Gladys accepte sur un device
-// publié : il valide `poll_frequency` EN MILLISECONDES contre l'ensemble fermé
-// [1000, 2000, 10000, 15000, 30000, 60000], et rejette toute la publication
-// sinon. En deçà de 30 s, on interrogerait la passerelle plus souvent qu'elle
-// ne rafraîchit ses mesures : seules 30 et 60 s sont retenues. Même correctif
-// que gladys-tp-link (src/config.js).
+// Intervalles (en secondes) de lecture de la passerelle en mode local, par la
+// boucle de l'intégration (src/poller.js). Ils venaient de l'ensemble que le
+// cœur de Gladys accepte sur un device publié ([1000, 2000, 10000, 15000,
+// 30000, 60000] ms) ; ils restent les mêmes pour ne rien changer aux
+// configurations existantes. En deçà de 30 s, on interrogerait la passerelle
+// plus souvent qu'elle ne rafraîchit ses mesures : seules 30 et 60 s sont
+// retenues.
 const POLL_FREQUENCIES_SECONDS = [30, 60];
 
 /**

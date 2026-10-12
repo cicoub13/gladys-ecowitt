@@ -179,8 +179,8 @@ export function buildObservation(live, sensorsInfo = null) {
 
 /**
  * Client de l'API locale, avec un cache court.
- * Gladys déclenche `onPoll` par device : sans cette mutualisation, dix devices
- * créés produiraient dix requêtes à la passerelle à chaque cycle.
+ * La boucle de lecture, un scan et le test de réception peuvent tomber en même
+ * temps : ils se partagent alors une seule requête à la passerelle.
  *
  * @param {object} options
  * @param {string} options.ip adresse de la passerelle sur le LAN
@@ -217,7 +217,7 @@ export function createLocalClient({ ip, cacheMs = 10_000, fetchImpl = fetch }) {
       if (cached && Date.now() - cachedAt < cacheMs) {
         return cached;
       }
-      // Plusieurs `onPoll` simultanés se partagent la même requête.
+      // Plusieurs appels simultanés se partagent la même requête.
       inFlight ??= refresh().finally(() => {
         inFlight = null;
       });

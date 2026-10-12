@@ -52,6 +52,8 @@ configure on the station.
 1. Fill in the **gateway IP address** in the configuration. The **Search for
    gateways** button can find it for you.
 2. Adjust the polling interval if needed: 30 or 60 seconds (60 by default).
+   The integration reads the gateway at that interval and refreshes the
+   readings of every device you created.
 3. Run a discovery.
 
 This mode has one advantage: it reads each sensor's hardware id, so replacing a
