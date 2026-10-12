@@ -188,6 +188,11 @@ export async function startIntegration({
     await publishDevices();
   });
 
+  // Sans effet : src/poller.js lit la passerelle. Les devices créés avant
+  // portent encore un poll_frequency ; si une version de Gladys se mettait à
+  // les interroger, on acquitte au lieu de répondre « not implemented ».
+  gladys.onPoll(() => {});
+
   gladys.onConfigUpdated(async (raw) => {
     config = normalizeConfig(raw);
     refreshLocalClient();
