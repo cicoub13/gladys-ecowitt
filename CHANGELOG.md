@@ -10,3 +10,6 @@
   60 seconds, as set in the polling interval, and refreshes every created
   device. Nothing to do on your side: existing devices are refreshed as they
   are.
+- After creating a device, values that rarely change (battery, signal, yearly
+  rain…) now show up with the next reading instead of staying empty until
+  they change.

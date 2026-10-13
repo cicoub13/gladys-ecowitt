@@ -44,7 +44,7 @@ mapping deux fois, elles convergent vers un format unique :
 
 ```
 sources/pushAdapter  ─┐
-                      ├─► Observation ─► catalog ─► devices + features ─► publisher
+                      ├─► Observation ─► catalog ─► devices + features ─► publishChangedStates
 sources/localAdapter ─┘
 ```
 
@@ -60,7 +60,7 @@ sources/localAdapter ─┘
 | `src/ecowitt/units.js`   | Conversions d'unités                                  |
 | `src/ecowitt/battery.js` | Encodage des batteries (deux conventions)             |
 | `src/ecowitt/catalog.js` | Capteurs → catégories et unités Gladys                |
-| `src/gladys/`            | Construction des appareils et publication dédupliquée |
+| `src/gladys/`            | Construction des appareils Gladys et de leurs mesures |
 | `src/discovery.js`       | Décodage des annonces UDP des passerelles             |
 | `src/store.js`           | État persistant dans `/data`                          |
 
