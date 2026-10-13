@@ -10,7 +10,6 @@
 import { GladysIntegration, logger } from '@gladysassistant/integration-sdk';
 import { MODES, normalizeConfig, resolveMode } from './config.js';
 import { createStore } from './store.js';
-import { createPublisher } from './gladys/publisher.js';
 import { buildDiscoveredDevices, buildStates } from './gladys/buildDevices.js';
 import { createReceiverClient } from './receiver/client.js';
 import { createLocalClient } from './sources/localAdapter.js';
@@ -48,8 +47,6 @@ export async function startIntegration({
   store = createStore(),
   receiverUrl = RECEIVER_URL,
 } = {}) {
-  const publisher = createPublisher(gladys);
-
   let config = normalizeConfig();
   let localClient = null;
 
@@ -145,7 +142,11 @@ export async function startIntegration({
       logger.info('Nouveau profil de capteurs, republication des appareils découverts');
       await publishDevices();
     }
-    await publisher.publish(buildStates(gladys, store.state.stationId, observation));
+    // Seules les valeurs qui ont changé partent (300 états/min, 40 à 60
+    // fonctionnalités, un envoi toutes les 16 s au pire). Le SDK oublie les
+    // valeurs d'un appareil quand l'utilisateur le crée : le relevé suivant
+    // les renvoie toutes, Gladys ayant ignoré celles d'avant sa création.
+    await gladys.publishChangedStates(buildStates(gladys, store.state.stationId, observation));
   }
 
   async function publishDevices() {
@@ -243,8 +244,9 @@ export async function startIntegration({
       config = normalizeConfig(await gladys.getConfig());
       refreshLocalClient();
       // Gladys resynchronise son état à chaque reconnexion : les valeurs
-      // mémorisées ne sont plus un reflet fiable de ce qu'il connaît.
-      publisher.reset();
+      // mémorisées ne sont plus un reflet fiable de ce qu'il connaît (le SDK
+      // ne les oublie pas de lui-même à la reconnexion).
+      gladys.forgetPublishedStates();
       await publishDevices();
       // Pas de `true` d'office : Gladys revient, mais la source peut être
       // toujours coupée. En mode local, le dernier résultat connu fait foi

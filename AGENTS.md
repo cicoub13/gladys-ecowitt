@@ -35,9 +35,11 @@ names are in French.
   schedules it for devices published with `should_poll: true`, which never reaches already created devices.
 - Both produce the pivot **Observation** `{stationId, model, receivedAt, sensors:[{type, channel,
 hardwareId, values, battery, signal}]}` → `ingest()`: `store.merge` → republish discovered devices if
-  the profile changed → `gladys/publisher.publish(buildStates(...))`.
-- `gladys/publisher.js` dedups by last published value (mandatory: 40–60 features, pushes as often
-  as every 16 s, 300 states/min limit) and only records values after a successful batch. `reset()` on each `connected`.
+  the profile changed → `gladys.publishChangedStates(buildStates(...))`.
+- `publishChangedStates` (SDK) dedups by last published value (mandatory: 40–60 features, pushes as often
+  as every 16 s, 300 states/min limit), only records values Gladys accepted, and forgets a device's values
+  when the user creates/updates/deletes it, so the next reading re-sends them all (Gladys drops states of a
+  device not created yet). It does not forget on reconnect: `forgetPublishedStates()` on each `connected`.
 - Modes (`src/config.js`): `auto` resolves to `local` if `gateway_ip` is set, else `push`. The mode is
   **exclusive**: push readings are dropped in local mode, because the two sources give different ids and would duplicate devices.
 - Connection status (`reportSource` in `integration.js`) follows the active source: gateway

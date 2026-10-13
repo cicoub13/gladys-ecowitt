@@ -75,6 +75,15 @@ export function createFakeGladys({ config = {} } = {}) {
       }
     },
 
+    // Sans déduplication : chaque lecture des tests publie de toute façon une
+    // valeur neuve.
+    async publishChangedStates(states) {
+      await this.publishStates(states);
+      return { success: true, count: states.length };
+    },
+
+    forgetPublishedStates() {},
+
     async publishCameraImage(deviceExternalId, image) {
       cameraImages.push({ deviceExternalId, image });
     },

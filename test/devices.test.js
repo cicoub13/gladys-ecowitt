@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildDiscoveredDevices, buildStates, platformId } from '../src/gladys/buildDevices.js';
-import { createPublisher } from '../src/gladys/publisher.js';
 import { createStore } from '../src/store.js';
 import { toObservation } from '../src/sources/pushAdapter.js';
 import { buildObservation } from '../src/sources/localAdapter.js';
@@ -134,49 +133,6 @@ test('les états sont aplatis, batterie et signal compris', () => {
   assert.equal(byId.get('wh31:wh31-A1B2:signal'), 100);
   // Batterie faible du canal 2, exprimée en binaire.
   assert.equal(byId.get('wh31:wh31-A1B3:batteryLow'), 1);
-});
-
-test('le publisher ne renvoie que ce qui a changé', async () => {
-  const gladys = createFakeGladys();
-  const publisher = createPublisher(gladys);
-  const states = [
-    { device_feature_external_id: 'a', state: 1 },
-    { device_feature_external_id: 'b', state: 2 },
-  ];
-
-  assert.equal(await publisher.publish(states), 2);
-  assert.equal(await publisher.publish(states), 0, 'des valeurs identiques ne repartent pas');
-
-  assert.equal(
-    await publisher.publish([
-      { device_feature_external_id: 'a', state: 1 },
-      { device_feature_external_id: 'b', state: 3 },
-    ]),
-    1,
-  );
-  assert.equal(gladys.published.length, 3);
-
-  // À la reconnexion, Gladys resynchronise : tout doit être republié.
-  publisher.reset();
-  assert.equal(await publisher.publish(states), 2);
-});
-
-test('le publisher découpe en lots de 100', async () => {
-  const batches = [];
-  const gladys = {
-    ...createFakeGladys(),
-    async publishStates(list) {
-      batches.push(list.length);
-    },
-  };
-  const publisher = createPublisher(gladys);
-  const many = Array.from({ length: 250 }, (_, index) => ({
-    device_feature_external_id: `feature-${index}`,
-    state: index,
-  }));
-
-  await publisher.publish(many);
-  assert.deepEqual(batches, [100, 100, 50]);
 });
 
 test('l’état se recharge depuis le disque', async () => {

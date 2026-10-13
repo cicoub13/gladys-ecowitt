@@ -38,7 +38,7 @@ async function freePort() {
  * Passerelle simulée, que le test peut « éteindre » et « rallumer ». Elle
  * compte ses lectures (`reads`) et renvoie à chacune une humidité intérieure
  * différente (40 % + numéro de lecture), pour que chaque lecture publie un
- * état neuf malgré la déduplication du publisher.
+ * état neuf malgré la déduplication de `publishChangedStates`.
  */
 async function startFakeGateway(t) {
   const gateway = { up: true, reads: 0 };
