@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-13
+
 ### Fixed
 
 - **Local polling mode now refreshes your readings on its own.** The gateway
