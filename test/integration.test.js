@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { startIntegration } from '../src/integration.js';
 import { startReceiver } from '../src/receiver/server.js';
 import { createStore } from '../src/store.js';
-import { createFakeGladys } from './helpers/fakeGladys.js';
+import { createFakeGladys } from '@gladysassistant/integration-sdk/testing';
 import { LIVEDATA_IMPERIAL, SENSORS_INFO } from './fixtures/livedata.js';
 
 const newStore = () =>
@@ -66,20 +66,30 @@ async function startFakeGateway(t) {
   return gateway;
 }
 
-/** Démarre l'intégration contre le faux Gladys, et l'arrête en fin de test. */
+/**
+ * Démarre l'intégration contre le faux Gladys du SDK, et l'arrête en fin de
+ * test. `startIntegration` se connecte : le handler `connected` a tourné au
+ * retour.
+ */
 async function start(t, { config, receiverUrl }) {
-  const gladys = createFakeGladys({ config });
+  const gladys = createFakeGladys({ selector: 'ecowitt', config });
   await startIntegration({ gladys, store: newStore(), receiverUrl });
-  t.after(() => gladys.handlers.shutdown());
-  await gladys.handlers.events.connected();
+  t.after(() => gladys.fake.shutdown());
   return gladys;
 }
 
-const lastStatus = (gladys) => gladys.connectionStatuses.at(-1);
+const lastStatus = (gladys) => gladys.fake.connectionStatus;
+
+/** États publiés pour une fonctionnalité de la console (`gateway`). */
+const gatewayStates = (gladys, key) =>
+  gladys.fake.states.filter(
+    (s) =>
+      s.device_feature_external_id.startsWith('ext:ecowitt:gateway:') &&
+      s.device_feature_external_id.endsWith(`:${key}`),
+  );
 
 /** Dernière humidité intérieure publiée : elle identifie la lecture (40 + n). */
-const indoorHumidity = (gladys) =>
-  gladys.published.filter((p) => /^gateway:.*:humidity$/.test(p.featureExternalId)).at(-1)?.state;
+const indoorHumidity = (gladys) => gatewayStates(gladys, 'humidity').at(-1)?.state;
 
 /** Attend que la n-ième lecture de la passerelle soit publiée. */
 const readPublished = (gladys, n) => waitFor(() => indoorHumidity(gladys) === 40 + n);
@@ -102,7 +112,7 @@ test('mode local : une seule lecture de la passerelle par intervalle, quel que s
   });
 
   assert.ok(await readPublished(gladys, 1), 'une lecture dès la connexion');
-  assert.ok(gladys.discovered.length > 1);
+  assert.ok(gladys.fake.discoveredDevices.length > 1);
 
   t.mock.timers.tick(29_999);
   await settle();
@@ -140,7 +150,7 @@ test('un changement de configuration réarme la boucle, y compris de mode', asyn
   assert.ok(await readPublished(gladys, 1));
 
   // Nouvel intervalle : lecture immédiate, puis toutes les 30 s.
-  await gladys.handlers.configUpdated({ gateway_ip: gateway.ip, poll_frequency: 30 });
+  await gladys.fake.configUpdated({ gateway_ip: gateway.ip, poll_frequency: 30 });
   assert.ok(await readPublished(gladys, 2));
   t.mock.timers.tick(30_000);
   assert.ok(await readPublished(gladys, 3));
@@ -150,14 +160,14 @@ test('un changement de configuration réarme la boucle, y compris de mode', asyn
   assert.equal(gateway.reads, 4, 'l’ancien minuteur de 60 s ne tourne plus');
 
   // Passage en push : plus aucune lecture.
-  await gladys.handlers.configUpdated({ mode: 'push', gateway_ip: gateway.ip });
+  await gladys.fake.configUpdated({ mode: 'push', gateway_ip: gateway.ip });
   t.mock.timers.tick(60_000);
   t.mock.timers.tick(60_000);
   await settle();
   assert.equal(gateway.reads, 4);
 
   // Retour en automatique avec une IP : la boucle repart.
-  await gladys.handlers.configUpdated({ gateway_ip: gateway.ip });
+  await gladys.fake.configUpdated({ gateway_ip: gateway.ip });
   assert.ok(await readPublished(gladys, 5));
 });
 
@@ -178,11 +188,11 @@ test('mode local : une lecture en échec passe le statut à faux sans arrêter l
   assert.ok(lastStatus(gladys).message.fr);
 
   // Un second échec ne renvoie pas le même statut.
-  const count = gladys.connectionStatuses.length;
+  const count = gladys.fake.connectionStatuses.length;
   t.mock.timers.tick(30_000);
   assert.ok(await waitFor(() => gateway.reads === 3));
   await settle();
-  assert.equal(gladys.connectionStatuses.length, count);
+  assert.equal(gladys.fake.connectionStatuses.length, count);
 
   gateway.up = true;
   t.mock.timers.tick(30_000);
@@ -199,18 +209,18 @@ test('la boucle s’arrête à la déconnexion et à l’arrêt, et repart à la
   });
   assert.ok(await readPublished(gladys, 1));
 
-  gladys.handlers.events.disconnected();
+  await gladys.disconnect();
   t.mock.timers.tick(30_000);
   t.mock.timers.tick(30_000);
   await settle();
   assert.equal(gateway.reads, 1);
 
-  await gladys.handlers.events.connected();
+  await gladys.connect();
   assert.ok(await readPublished(gladys, 2));
   t.mock.timers.tick(30_000);
   assert.ok(await readPublished(gladys, 3));
 
-  await gladys.handlers.shutdown();
+  await gladys.fake.shutdown();
   t.mock.timers.tick(30_000);
   t.mock.timers.tick(30_000);
   await settle();
@@ -255,6 +265,36 @@ test('à la reconnexion à Gladys, le statut renvoyé reflète la source', async
 
   // Gladys redémarre : `connected` ne doit pas annoncer un statut vrai alors
   // que la passerelle est toujours injoignable.
-  await gladys.handlers.events.connected();
+  await gladys.disconnect();
+  await gladys.connect();
   assert.equal(lastStatus(gladys).connected, false);
+});
+
+test('un appareil créé reçoit toutes ses valeurs au relevé suivant, même celles qui ne bougent pas', async (t) => {
+  mockTimers(t);
+  const gateway = await startFakeGateway(t);
+  const gladys = await start(t, {
+    config: { gateway_ip: gateway.ip, poll_frequency: 30 },
+    receiverUrl: `http://127.0.0.1:${await freePort()}`,
+  });
+  // Premier relevé publié avant que l'utilisateur ne crée l'appareil : Gladys
+  // l'ignore.
+  assert.ok(await readPublished(gladys, 1));
+  assert.equal(gatewayStates(gladys, 'temperature').length, 1);
+
+  t.mock.timers.tick(30_000);
+  assert.ok(await readPublished(gladys, 2));
+  assert.equal(gatewayStates(gladys, 'temperature').length, 1, 'valeur inchangée : pas renvoyée');
+
+  const gatewayDevice = gladys.fake.discoveredDevices.find((device) =>
+    device.external_id.startsWith('ext:ecowitt:gateway:'),
+  );
+  await gladys.fake.deviceCreated(gatewayDevice);
+  t.mock.timers.tick(30_000);
+  assert.ok(await readPublished(gladys, 3));
+  assert.equal(
+    gatewayStates(gladys, 'temperature').length,
+    2,
+    'la température, inchangée, est renvoyée une fois l’appareil créé',
+  );
 });

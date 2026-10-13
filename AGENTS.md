@@ -96,8 +96,10 @@ hardwareId, featureKeys, batteryKind, hasSignal, lastSeenAt}}}`. It keeps the **
 
 ## Tests
 
-- `test/helpers/fakeGladys.js`: in-memory SDK (`externalIds` without the `ext:` prefix, records publishes and
-  statuses, stores handlers in `handlers` so tests can call them).
+- Fake Gladys: `createFakeGladys({ selector: 'ecowitt' })` from `@gladysassistant/integration-sdk/testing`
+  (ids are `ext:ecowitt:…`). It validates categories, types and units like the host API (a test publishes
+  every catalog feature through it). `startIntegration` already calls `connect()`; reconnect with
+  `disconnect()` + `connect()`, stop with `fake.shutdown()`, read `fake.states` / `fake.connectionStatus`.
 - Fixtures: `test/fixtures/ws2910.js` (push payload, imperial) and `test/fixtures/livedata.js`
   (`LIVEDATA_IMPERIAL`, `SENSORS_INFO`, with unpaired entries).
 - `test/integration.test.js` starts a real receiver on free ports, a fake HTTP gateway you can switch

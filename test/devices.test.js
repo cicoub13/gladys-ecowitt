@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildDiscoveredDevices, buildStates, platformId } from '../src/gladys/buildDevices.js';
+import { SENSOR_CATALOG } from '../src/ecowitt/catalog.js';
 import { createStore } from '../src/store.js';
 import { toObservation } from '../src/sources/pushAdapter.js';
 import { buildObservation } from '../src/sources/localAdapter.js';
-import { createFakeGladys } from './helpers/fakeGladys.js';
+import { createFakeGladys } from '@gladysassistant/integration-sdk/testing';
 import { WS2910_PAYLOAD } from './fixtures/ws2910.js';
 import { LIVEDATA_IMPERIAL, SENSORS_INFO } from './fixtures/livedata.js';
 
@@ -14,7 +15,7 @@ const newStore = () =>
   createStore({ path: join(tmpdir(), `ecowitt-test-${Math.random().toString(36).slice(2)}.json`) });
 
 test('un device par capteur physique, nommé par canal', () => {
-  const gladys = createFakeGladys();
+  const gladys = createFakeGladys({ selector: 'ecowitt' });
   const store = newStore();
   store.merge(toObservation(WS2910_PAYLOAD));
 
@@ -33,7 +34,7 @@ test('un device par capteur physique, nommé par canal', () => {
 test('les devices ne demandent pas à Gladys de les interroger', () => {
   // La passerelle est lue par la boucle de l'intégration (src/poller.js) : ni
   // `should_poll` ni `poll_frequency`, dans aucun mode.
-  const gladys = createFakeGladys();
+  const gladys = createFakeGladys({ selector: 'ecowitt' });
   const store = newStore();
   store.merge(buildObservation(LIVEDATA_IMPERIAL, SENSORS_INFO));
   store.merge(toObservation(WS2910_PAYLOAD));
@@ -46,7 +47,7 @@ test('les devices ne demandent pas à Gladys de les interroger', () => {
 });
 
 test('seules les mesures réellement observées deviennent des fonctionnalités', () => {
-  const gladys = createFakeGladys();
+  const gladys = createFakeGladys({ selector: 'ecowitt' });
   const store = newStore();
   store.merge(toObservation(WS2910_PAYLOAD));
 
@@ -63,7 +64,7 @@ test('seules les mesures réellement observées deviennent des fonctionnalités'
 });
 
 test('la structure d’un device reste stable quand une mesure manque', () => {
-  const gladys = createFakeGladys();
+  const gladys = createFakeGladys({ selector: 'ecowitt' });
   const store = newStore();
 
   store.merge(toObservation(WS2910_PAYLOAD));
@@ -92,7 +93,7 @@ test('un nouveau capteur déclenche une republication', () => {
 });
 
 test('la batterie choisit sa forme selon ce que publie le capteur', () => {
-  const gladys = createFakeGladys();
+  const gladys = createFakeGladys({ selector: 'ecowitt' });
   const store = newStore();
   store.merge(toObservation(WS2910_PAYLOAD));
   const devices = buildDiscoveredDevices(gladys, store.state);
@@ -124,15 +125,57 @@ test('l’identifiant matériel sert d’ancrage quand il est disponible', () =>
 });
 
 test('les états sont aplatis, batterie et signal compris', () => {
-  const gladys = createFakeGladys();
+  const gladys = createFakeGladys({ selector: 'ecowitt' });
   const observation = buildObservation(LIVEDATA_IMPERIAL, SENSORS_INFO);
   const states = buildStates(gladys, 'CC44', observation);
 
   const byId = new Map(states.map((s) => [s.device_feature_external_id, s.state]));
-  assert.equal(byId.get('wh31:wh31-A1B2:temperature'), 21.11);
-  assert.equal(byId.get('wh31:wh31-A1B2:signal'), 100);
+  assert.equal(byId.get('ext:ecowitt:wh31:wh31-A1B2:temperature'), 21.11);
+  assert.equal(byId.get('ext:ecowitt:wh31:wh31-A1B2:signal'), 100);
   // Batterie faible du canal 2, exprimée en binaire.
-  assert.equal(byId.get('wh31:wh31-A1B3:batteryLow'), 1);
+  assert.equal(byId.get('ext:ecowitt:wh31:wh31-A1B3:batteryLow'), 1);
+});
+
+test('Gladys accepte les appareils et les états publiés, dans les deux modes', async () => {
+  // Le faux Gladys du SDK valide catégories, types, unités et valeurs comme
+  // l'API hôte : une entrée du catalogue inconnue de Gladys serait refusée.
+  for (const observation of [
+    toObservation(WS2910_PAYLOAD),
+    buildObservation(LIVEDATA_IMPERIAL, SENSORS_INFO),
+  ]) {
+    const gladys = createFakeGladys({ selector: 'ecowitt' });
+    const store = newStore();
+    store.merge(observation);
+
+    await gladys.publishDiscoveredDevices(buildDiscoveredDevices(gladys, store.state));
+    const states = buildStates(gladys, store.state.stationId, observation);
+    await gladys.publishStates(states);
+
+    assert.ok(gladys.fake.discoveredDevices.length > 1);
+    assert.equal(gladys.fake.states.length, states.length);
+  }
+});
+
+test('Gladys accepte toutes les fonctionnalités du catalogue', async () => {
+  // Chaque type avec toutes ses mesures, et les deux formes de batterie.
+  const sensors = {};
+  for (const [type, description] of Object.entries(SENSOR_CATALOG)) {
+    for (const batteryKind of ['low', 'percent']) {
+      sensors[`${type}-${batteryKind}`] = {
+        type,
+        channel: batteryKind === 'low' ? 1 : 2,
+        hardwareId: null,
+        featureKeys: description.features.map((feature) => feature.key),
+        batteryKind,
+        hasSignal: true,
+      };
+    }
+  }
+  const gladys = createFakeGladys({ selector: 'ecowitt' });
+  const devices = buildDiscoveredDevices(gladys, { stationId: 'ABC', sensors });
+
+  await gladys.publishDiscoveredDevices(devices);
+  assert.equal(gladys.fake.discoveredDevices.length, Object.keys(sensors).length);
 });
 
 test('l’état se recharge depuis le disque', async () => {
