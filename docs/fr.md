@@ -1,5 +1,7 @@
 # Intégration Ecowitt pour Gladys Assistant
 
+## Présentation
+
 Cette intégration fait remonter les capteurs de votre station météo Ecowitt dans
 Gladys : température, humidité, vent, pluie, ensoleillement, UV, pression, mais
 aussi les sondes déportées (humidité du sol, PM2.5, CO2, foudre, détection de
@@ -8,7 +10,21 @@ propre batterie et son historique, utilisable dans vos scènes.
 
 Tout se passe en local : aucune donnée ne transite par le cloud Ecowitt.
 
-## Deux modes selon votre matériel
+## Prérequis
+
+- Gladys 4.86 ou supérieur.
+- Une station météo, une console ou une passerelle Ecowitt sur le même réseau
+  local que la machine qui héberge Gladys.
+- Pour le mode réception : l'application **WS View Plus**, et une station
+  capable de joindre la machine qui héberge Gladys sur le réseau local, sur le
+  port indiqué dans l'écran de configuration.
+- Pour le mode interrogation locale : une passerelle ou une console disposant
+  d'une API locale (voir la liste ci-dessous), joignable à son adresse IP depuis
+  la machine qui héberge Gladys.
+
+## Configuration
+
+Deux modes sont proposés, selon votre matériel.
 
 ### Réception (fonctionne avec presque toutes les stations)
 
@@ -76,15 +92,24 @@ avoir créé vos appareils, ceux-ci apparaîtront en double dans l'écran Décou
 
 Le port de réception est ouvert sur votre réseau local et accepte, par
 construction, tout envoi qui lui parvient. Si plusieurs stations coexistent sur
-votre réseau, renseignez le champ **PASSKEY** pour n'accepter que la vôtre. Vous
-le trouverez dans les journaux de l'intégration au premier relevé reçu.
+votre réseau, renseignez le champ **PASSKEY** pour n'accepter que la vôtre. Pour le
+trouver, saisissez une valeur quelconque dans ce champ et enregistrez : le
+relevé suivant est alors ignoré, et les journaux de l'intégration affichent son
+PASSKEY (`Relevé ignoré : PASSKEY inattendu (…)`). Copiez cette valeur dans le
+champ et enregistrez à nouveau.
 
-## Résolution des problèmes
+## Dépannage
 
-| Symptôme                                      | Piste                                                                                                                                                                                                                                           |
-| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| L'écran Découverte reste vide                 | Aucun relevé reçu : vérifiez l'adresse, le port et le chemin dans WS View Plus, puis cliquez sur « Tester la réception ».                                                                                                                       |
-| L'adresse affichée semble fausse              | Elle reprend celle par laquelle votre navigateur joint Gladys : `localhost` si vous êtes sur la machine elle-même, le nom du tunnel via Gladys Plus ou un reverse proxy. Remplacez-la par l'adresse IP locale de la machine qui héberge Gladys. |
-| « Rechercher les passerelles » ne trouve rien | Normal pour une WS2910 ou un GW1000 : ces modèles n'ont pas d'API locale. Utilisez le mode réception.                                                                                                                                           |
-| Une mesure manque                             | Tous les capteurs ne transmettent pas toutes les mesures. Seules celles réellement reçues deviennent des fonctionnalités.                                                                                                                       |
-| Aucune batterie sur un capteur solaire        | Ecowitt publie une tension sans documenter de seuil pour les WS80, WS90, WH40 et WH85 : plutôt qu'un état inventé, rien n'est affiché.                                                                                                          |
+| Symptôme                                                                                          | Piste                                                                                                                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| L'écran Découverte reste vide                                                                     | Aucun relevé reçu : vérifiez l'adresse, le port et le chemin dans WS View Plus, puis cliquez sur « Tester la réception ».                                                                                                                       |
+| L'adresse affichée semble fausse                                                                  | Elle reprend celle par laquelle votre navigateur joint Gladys : `localhost` si vous êtes sur la machine elle-même, le nom du tunnel via Gladys Plus ou un reverse proxy. Remplacez-la par l'adresse IP locale de la machine qui héberge Gladys. |
+| « Rechercher les passerelles » ne trouve rien                                                     | Normal pour une WS2910 ou un GW1000 : ces modèles n'ont pas d'API locale. Utilisez le mode réception.                                                                                                                                           |
+| Une mesure manque                                                                                 | Tous les capteurs ne transmettent pas toutes les mesures. Seules celles réellement reçues deviennent des fonctionnalités.                                                                                                                       |
+| Aucune batterie sur un capteur solaire                                                            | Ecowitt publie une tension sans documenter de seuil pour les WS80, WS90, WH40 et WH85 : plutôt qu'un état inventé, rien n'est affiché.                                                                                                          |
+| « Passerelle injoignable à … »                                                                    | Mode interrogation locale : vérifiez que la passerelle est allumée et que son adresse IP n'a pas changé (attribuez-lui une adresse fixe dans votre box), ou retrouvez-la avec « Rechercher les passerelles ».                                   |
+| « Le récepteur des relevés est injoignable (il redémarre peut-être) : nouvel essai automatique. » | Mode réception : le conteneur de réception est peut-être en train de redémarrer. L'intégration réessaie d'elle-même ; si le message persiste, redémarrez l'intégration.                                                                         |
+| « L'initialisation a échoué, consultez les logs de l'intégration. »                               | Consultez les logs de l'intégration, puis redémarrez-la.                                                                                                                                                                                        |
+
+Les logs de l'intégration se trouvent dans l'onglet **Logs** de la page de
+l'intégration dans Gladys.

@@ -1,5 +1,7 @@
 # Ecowitt integration for Gladys Assistant
 
+## Overview
+
 This integration brings your Ecowitt weather station sensors into Gladys:
 temperature, humidity, wind, rain, solar radiation, UV, pressure, and also the
 remote probes (soil moisture, PM2.5, CO2, lightning, leak detection). Every
@@ -8,7 +10,20 @@ ready to use in your scenes.
 
 Everything stays local: no data goes through the Ecowitt cloud.
 
-## Two modes, depending on your hardware
+## Prerequisites
+
+- Gladys 4.86 or later.
+- An Ecowitt weather station, console or gateway on the same local network as
+  the machine running Gladys.
+- For the push mode: the **WS View Plus** app, and a station that can reach the
+  machine running Gladys over the local network, on the port shown in the
+  configuration screen.
+- For the local polling mode: a gateway or a console with a local API (see the
+  list below), reachable at its IP address from the machine running Gladys.
+
+## Configuration
+
+Two modes are available, depending on your hardware.
 
 ### Push (works with almost every station)
 
@@ -73,15 +88,22 @@ they will show up again in the Discover screen — delete the old ones.
 
 The receiving port is open on your local network and accepts, by design, any
 upload that reaches it. If several stations coexist on your network, fill in the
-**PASSKEY** field to accept only yours. You will find it in the integration logs
-on the first reading received.
+**PASSKEY** field to accept only yours. To find it, enter any value in that field and
+save: the next reading is then ignored, and the integration logs show its
+PASSKEY (`Relevé ignoré : PASSKEY inattendu (…)`). Copy that value into the
+field and save again.
 
 ## Troubleshooting
 
-| Symptom                             | What to check                                                                                                                                                                                                                         |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The Discover screen stays empty     | No reading received: check the address, port and path in WS View Plus, then click "Test the connection".                                                                                                                              |
-| The displayed address looks wrong   | It mirrors the one your browser uses to reach Gladys: `localhost` when you are on the machine itself, the tunnel hostname through Gladys Plus or a reverse proxy. Replace it with the local IP address of the machine running Gladys. |
-| "Search for gateways" finds nothing | Expected on a WS2910 or a GW1000: those models have no local API. Use the push mode.                                                                                                                                                  |
-| A measurement is missing            | Not every sensor reports every measurement. Only the ones actually received become features.                                                                                                                                          |
-| No battery on a solar sensor        | Ecowitt reports a voltage but documents no threshold for the WS80, WS90, WH40 and WH85: rather than an invented state, nothing is shown.                                                                                              |
+| Symptom                                                                               | What to check                                                                                                                                                                                                                         |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The Discover screen stays empty                                                       | No reading received: check the address, port and path in WS View Plus, then click "Test the connection".                                                                                                                              |
+| The displayed address looks wrong                                                     | It mirrors the one your browser uses to reach Gladys: `localhost` when you are on the machine itself, the tunnel hostname through Gladys Plus or a reverse proxy. Replace it with the local IP address of the machine running Gladys. |
+| "Search for gateways" finds nothing                                                   | Expected on a WS2910 or a GW1000: those models have no local API. Use the push mode.                                                                                                                                                  |
+| A measurement is missing                                                              | Not every sensor reports every measurement. Only the ones actually received become features.                                                                                                                                          |
+| No battery on a solar sensor                                                          | Ecowitt reports a voltage but documents no threshold for the WS80, WS90, WH40 and WH85: rather than an invented state, nothing is shown.                                                                                              |
+| "Gateway unreachable at …"                                                            | Local polling mode: check that the gateway is powered on and that its IP address has not changed (give it a fixed address in your router), or find it again with "Search for gateways".                                               |
+| "The reading receiver is unreachable (it may be restarting): retrying automatically." | Push mode: the receiver container may be restarting. The integration retries on its own; if the message stays, restart the integration.                                                                                               |
+| "Initialization failed, check the integration logs."                                  | Open the integration logs and restart the integration.                                                                                                                                                                                |
+
+The integration logs are in the **Logs** tab of the integration page in Gladys.
